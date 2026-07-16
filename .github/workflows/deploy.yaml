@@ -1,0 +1,58 @@
+name: Build and Push Static Assets
+
+on:
+  push:
+    branches:
+      - master # Watch for pushes to master
+
+env:
+  REGISTRY: ghcr.io
+  # Replace this with your exact asset image name
+  IMAGE_NAME: tudopacu/city_builder-assets
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          no-cache: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  # Trigger the infrastructure repo agent/pipeline to roll out the update
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Infrastructure Deployment
+        uses: actions/github-script@v6
+        with:
+          # Your Github PAT (Personal Access Token) with "repo" access needs to be stored
+          # in your repository's Secrets settings as: INFRA_DEPLOY_TOKEN
+          github-token: ${{ secrets.INFRA_DEPLOY_TOKEN }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: 'tudopacu',
+              repo: 'city-builder-infrastructure', // Your K8s GitOps/infrastructure repo name
+              event_type: 'deploy-assets',
+              client_payload: {
+                sha: '${{ github.sha }}'
+              }
+            });
