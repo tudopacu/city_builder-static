@@ -46,7 +46,7 @@ jobs:
         with:
           # Your Github PAT (Personal Access Token) with "repo" access needs to be stored
           # in your repository's Secrets settings as: INFRA_DEPLOY_TOKEN
-          github-token: ${{ secrets.INFRA_DEPLOY_TOKEN }}
+          github-token: ${{ secrets.INFRA_PAT }}
           script: |
             await github.rest.repos.createDispatchEvent({
               owner: 'tudopacu',
