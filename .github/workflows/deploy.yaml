@@ -49,7 +49,7 @@ jobs:
           script: |
             await github.rest.repos.createDispatchEvent({
               owner: 'tudopacu',
-              repo: 'city-builder-infrastructure',
+              repo: 'city_builder-infrastructure',
               event_type: 'deploy-assets',
               client_payload: {
                 sha: '${{ github.sha }}'
