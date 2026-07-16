@@ -44,13 +44,12 @@ jobs:
       - name: Trigger Infrastructure Deployment
         uses: actions/github-script@v6
         with:
-          # Your Github PAT (Personal Access Token) with "repo" access needs to be stored
-          # in your repository's Secrets settings as: INFRA_DEPLOY_TOKEN
+          # Swapped to your working secret
           github-token: ${{ secrets.INFRA_PAT }}
           script: |
             await github.rest.repos.createDispatchEvent({
               owner: 'tudopacu',
-              repo: 'city-builder-infrastructure', // Your K8s GitOps/infrastructure repo name
+              repo: 'city-builder-infrastructure',
               event_type: 'deploy-assets',
               client_payload: {
                 sha: '${{ github.sha }}'
