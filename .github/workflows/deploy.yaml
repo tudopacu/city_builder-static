@@ -3,16 +3,11 @@ name: Build and Push Static Assets
 on:
   push:
     branches:
-      - master # Watch for pushes to master
-
-env:
-  REGISTRY: ghcr.io
-  # Replace this with your exact asset image name
-  IMAGE_NAME: tudopacu/city_builder-assets
+      - master
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: read
       packages: write
@@ -24,9 +19,13 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Downcase Repository Name
+        run: |
+          echo "IMAGE_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -34,24 +33,16 @@ jobs:
           context: .
           push: true
           no-cache: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          tags: ghcr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-  # Trigger the infrastructure repo agent/pipeline to roll out the update
   deploy:
     needs: build-and-push
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Trigger Infrastructure Deployment
-        uses: actions/github-script@v6
+        uses: peter-evans/repository-dispatch@v3
         with:
-          # Swapped to your working secret
-          github-token: ${{ secrets.INFRA_PAT }}
-          script: |
-            await github.rest.repos.createDispatchEvent({
-              owner: 'tudopacu',
-              repo: 'city_builder-infrastructure',
-              event_type: 'deploy-assets',
-              client_payload: {
-                sha: '${{ github.sha }}'
-              }
-            });
+          token: ${{ secrets.INFRA_PAT }}
+          repository: tudopacu/city_builder-infrastructure
+          event-type: update-image
+          client-payload: '{"app": "yii2-cms", "image": "ghcr.io/tudopacu/city_builder-cms:${{ github.sha }}"}'
